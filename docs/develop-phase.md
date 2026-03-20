@@ -99,8 +99,7 @@
 
 #### 0.5 環境変数
 
-- [ ] backend: `wrangler secret put GEMINI_API_KEY`
-- [ ] backend: `wrangler secret put OPENAI_API_KEY`（Phase 1 で使用）
+- [ ] backend: `wrangler secret put GEMINI_API_KEY`（分析・画像生成ともに使用）
 - [ ] frontend (Pages): Settings → Environment variables に `VITE_API_URL` を本番用に設定
 
 ### 完了条件
@@ -115,13 +114,13 @@
 
 ### 目的
 
-動画をアップロード → フレーム抽出 → Gemini で分析 → DALL-E でサムネイル生成 → 表示・ダウンロード の E2E フローを実装する。
+動画をアップロード → フレーム抽出 → Gemini 2.5 Flash で分析 → Imagen 4 でサムネイル生成 → 表示・ダウンロード の E2E フローを実装する。
 
 ### フロー
 
 ```
 動画アップロード → ffmpeg.wasm でフレーム抽出(3〜5枚)
-    → POST /api/analyze (Gemini) → POST /api/generate (DALL-E)
+    → POST /api/analyze (Gemini 2.5 Flash) → POST /api/generate (Imagen 4)
     → サムネイル表示・ダウンロード
 ```
 
@@ -136,20 +135,20 @@
 
 #### 1.2 backend: /api/analyze
 
-- [ ] `GoogleGenerativeAI` をインストール
+- [ ] `@google/genai` をインストール
 - [ ] `POST /api/analyze` を実装
   - リクエスト: `{ frames: string[], userHint?: string }`（frames は base64）
   - レスポンス: `{ analysis: string, prompt: string }`
-- [ ] Gemini 1.5 Flash でプロンプト生成
+- [ ] Gemini 2.5 Flash でプロンプト生成
 - [ ] `wrangler dev` で動作確認
 
 #### 1.3 backend: /api/generate
 
-- [ ] `openai` をインストール
+- [ ] `@google/genai`（analyze と共通）で Imagen 4 を利用
 - [ ] `POST /api/generate` を実装
   - リクエスト: `{ prompt: string }`
-  - レスポンス: `{ imageUrl: string }`
-- [ ] DALL-E 3 で画像生成（size: 1792x1024, quality: standard）
+  - レスポンス: `{ imageBase64: string }`（または R2 にアップロードして `imageUrl`）
+- [ ] Imagen 4 で画像生成（aspectRatio: 16:9）
 
 #### 1.4 frontend: API 連携・UI
 
@@ -187,7 +186,7 @@
 
 - 動画をアップロードしてサムネイルが生成できる
 - 本番環境（Pages + Workers）で E2E が動作する
-- 1回あたりコストは約 6 円（Gemini + DALL-E）
+- 1回あたりコストは約 6 円（Gemini + Imagen）
 
 ---
 
