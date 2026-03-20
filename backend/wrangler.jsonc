@@ -1,5 +1,5 @@
 {
-  "name": "ai-video-studio-api",
+  "name": "ai-video-studio-backend",
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01"
 }
