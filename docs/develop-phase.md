@@ -4,6 +4,8 @@
 
 **アーキテクチャ**: backend（Workers）+ frontend（Pages）の分離構成
 
+**リポジトリ**: frontend と backend は同じリポジトリ内の `frontend/` と `backend/` に配置（モノレポ）
+
 ---
 
 ## フェーズ一覧
@@ -14,6 +16,30 @@
 | **Phase 1** | サムネイル生成 | 0円固定 + 変動約6円/回 | 必須 |
 | **Phase 2** | 動画編集（AIなし） | 0円 | 推奨 |
 | **Phase 3** | AI動画生成 | 約750円/月 + 変動 | 任意・将来 |
+
+---
+
+## モノレポの変わる点・注意点
+
+### 1. Cloudflare のプロジェクト設定
+
+| 項目 | モノレポ | 別リポジトリ |
+|------|----------|--------------|
+| Git 接続 | 同じリポジトリを 2 つのプロジェクトに接続 | リポジトリを分けて 1:1 で接続 |
+| root ディレクトリ | それぞれ `frontend/`、`backend/` を指定 | 通常はルート（`/`） |
+| build watch paths | `frontend/**` や `backend/**` で変更を限定 | 設定不要のことが多い |
+
+→ **モノレポの場合は「プロジェクトごとに root と build watch paths を必ず設定する」ことが重要**
+
+### 2. ビルドのトリガー
+
+- 1 つのコミットで frontend と backend の**両方**のビルドが走る可能性がある
+- `build watch paths` を設定すれば、`frontend/` 変更時は frontend のみ、`backend/` 変更時は backend のみ、といったように制御できる
+
+### 3. CI/CD
+
+- 1 リポジトリなので、同じ PR で frontend・backend の変更をまとめてレビューできる
+- 必要なら、変更があったディレクトリに応じてビルド対象を切り替える処理を CI に組み込める
 
 ---
 
@@ -54,17 +80,22 @@
 - [ ] `src/index.ts` に Hono の最小構成を記述
 - [ ] `wrangler dev` でローカル起動確認
 
-#### 0.4 Cloudflare プロジェクト接続
+#### 0.4 Cloudflare プロジェクト接続（モノレポ版）
 
-- [ ] **frontend**: Workers & Pages → Create → Pages → Connect to Git
-  - root: `frontend/`
-  - build: `npm run build`
-  - output: `dist`
-  - build watch paths: `frontend/**`
-- [ ] **backend**: Workers & Pages → Create → Workers → Connect to Git
-  - root: `backend/`
-  - build: `npm run deploy` or `wrangler deploy`
-  - build watch paths: `backend/**`
+**1 つのリポジトリ**を **2 つの Cloudflare プロジェクト**に接続する。root と build watch paths の指定が必須。
+
+- [ ] **frontend (Pages)**: Workers & Pages → Create → Pages → Connect to Git
+  - リポジトリ: このプロジェクト（backend と同じリポジトリ）
+  - Root directory: `frontend/`
+  - Build command: `npm run build`
+  - Build output directory: `dist`（root 基準）
+  - Build watch paths: `frontend/**`（frontend 配下の変更時のみビルド）
+
+- [ ] **backend (Workers)**: Workers & Pages → Create → Workers → Connect to Git
+  - リポジトリ: このプロジェクト（frontend と同じリポジトリ）
+  - Root directory: `backend/`
+  - Build command: `npm run deploy` または `npx wrangler deploy`
+  - Build watch paths: `backend/**`（backend 配下の変更時のみビルド）
 
 #### 0.5 環境変数
 
