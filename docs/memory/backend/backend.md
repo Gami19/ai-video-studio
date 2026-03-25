@@ -80,6 +80,32 @@
 - [ ] `/api/generate` にテスト用プロンプトを送って画像取得確認
 - [ ] frontend と接続して E2E 確認
 
+### 7. セキュリティ対策（Phase 1 必須）
+
+Phase 1 で実装すべきサーバーサイドのセキュリティ対策。実装の優先順位が高い項目。
+
+- [ ] **入力バリデーション（Zod 等）**
+  - `frames`・`userHint`・`prompt` をスキーマで検証
+  - 型・長さ・枚数などの制約を強制（例: frames 1〜5枚、prompt 最大2000文字）
+  - `zod` や Hono の `zValidator` を利用
+
+- [ ] **ペイロードサイズ制限**
+  - base64 画像の合計サイズを制限（例: 1枚5MB×5枚≒25MB 以内）
+  - リクエストボディが過大な場合は 400 で早期リジェクト
+
+- [ ] **エラーハンドラ（詳細を非表示）**
+  - `app.onError` でキャッチし、本番ではスタックトレースを返さない
+  - クライアントには汎用メッセージ（例: `"An error occurred"`）のみ返す
+  - 詳細は `console.error` で Workers ログに記録
+
+- [ ] **CORS 設定**
+  - 許可オリジンを明示（`*.pages.dev`、カスタムドメイン、`localhost:5173`）
+  - ワイルドカード `*` は使用しない
+
+- [ ] **GEMINI_API_KEY のシークレット管理**
+  - `wrangler secret put GEMINI_API_KEY` で設定（コードや `[vars]` に書かない）
+  - `Env` 型で bindings を型定義
+
 ---
 
 ## ファイル構成（backend）
