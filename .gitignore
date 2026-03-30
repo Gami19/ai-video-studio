@@ -33,3 +33,6 @@ lerna-debug.log*
 *.swp
 *.swo
 *.sw?
+
+.agent
+.cursor
