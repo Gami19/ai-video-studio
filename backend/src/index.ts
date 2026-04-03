@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import type { Env } from "./types";
 import { analyzeRoute } from "./routes/analyze";
 import { generateRoute } from "./routes/generate";
+import { videoRoute } from "./routes/video";
 
 const MAX_BODY_BYTES = 26 * 1024 * 1024; // 26MB (25MB frames + margin)
 
@@ -40,6 +41,7 @@ const app = new Hono<{ Bindings: Env }>()
   })
   .route("/api/analyze", analyzeRoute)
   .route("/api/generate", generateRoute)
+  .route("/api/video", videoRoute)
   .onError((err, c) => {
     console.error("Unhandled error:", err);
 

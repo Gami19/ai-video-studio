@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * base64 プレフィックス（data:image/jpeg;base64,）を除去して純粋な base64 文字列を返す
  */
-function stripBase64Prefix(str: string): string {
+export function stripBase64Prefix(str: string): string {
   const match = str.match(/^data:image\/\w+;base64,(.+)$/);
   return match ? match[1] : str;
 }
@@ -78,3 +78,89 @@ export const generateSchema = z.object({
 });
 
 export type GenerateInput = z.infer<typeof generateSchema>;
+
+const VIDEO_JOB_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const VIDEO_JOB_MAX_TOTAL_BASE64_BYTES = 24 * 1024 * 1024;
+
+const videoOptionalConfigSchema = z
+  .object({
+    aspectRatio: z.enum(["16:9", "9:16"]).optional(),
+    resolution: z.enum(["720p", "1080p", "4k"]).optional(),
+    durationSeconds: z.union([z.literal(4), z.literal(6), z.literal(8)]).optional(),
+  })
+  .strict()
+  .optional();
+
+const referenceImageSchema = z.object({
+  imageBase64: z.string().min(1),
+  mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  referenceType: z.enum(["ASSET", "STYLE"]).optional(),
+});
+
+const videoJobBodyUnion = z.union([
+  z.object({
+    mode: z.literal("image_prompt"),
+    prompt: z.string().min(1).max(4000),
+    imageBase64: z.string().min(1),
+    imageMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    config: videoOptionalConfigSchema,
+  }),
+  z.object({
+    mode: z.literal("reference_three"),
+    prompt: z.string().min(1).max(4000),
+    references: z.tuple([
+      referenceImageSchema,
+      referenceImageSchema,
+      referenceImageSchema,
+    ]),
+    config: videoOptionalConfigSchema,
+  }),
+  z.object({
+    mode: z.literal("first_last"),
+    prompt: z.string().min(1).max(4000),
+    firstFrameBase64: z.string().min(1),
+    firstMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    lastFrameBase64: z.string().min(1),
+    lastMimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    config: videoOptionalConfigSchema,
+  }),
+]);
+
+/**
+ * POST /api/video/jobs — Veo ジョブ開始（discriminated by mode）
+ */
+export const videoJobStartSchema = videoJobBodyUnion.superRefine((data, ctx) => {
+  const checkSize = (label: string, raw: string) => {
+    const sz = base64ByteSize(raw);
+    if (sz > VIDEO_JOB_MAX_IMAGE_BYTES) {
+      ctx.addIssue({
+        code: "custom",
+        message: `${label} は ${VIDEO_JOB_MAX_IMAGE_BYTES / 1024 / 1024}MB 以内にしてください`,
+        path: [],
+      });
+    }
+    return sz;
+  };
+
+  let total = 0;
+  if (data.mode === "image_prompt") {
+    total += checkSize("imageBase64", data.imageBase64);
+  } else if (data.mode === "reference_three") {
+    data.references.forEach((r, i) => {
+      total += checkSize(`references[${i}].imageBase64`, r.imageBase64);
+    });
+  } else {
+    total += checkSize("firstFrameBase64", data.firstFrameBase64);
+    total += checkSize("lastFrameBase64", data.lastFrameBase64);
+  }
+
+  if (total > VIDEO_JOB_MAX_TOTAL_BASE64_BYTES) {
+    ctx.addIssue({
+      code: "custom",
+      message: `画像データの合計は ${VIDEO_JOB_MAX_TOTAL_BASE64_BYTES / 1024 / 1024}MB 以内にしてください`,
+      path: [],
+    });
+  }
+});
+
+export type VideoJobStartInput = z.infer<typeof videoJobStartSchema>;
