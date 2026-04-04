@@ -7,4 +7,6 @@
 export type Env = {
   GEMINI_API_KEY: string;
   ALLOWED_ORIGINS?: string;
+  /** 未設定時は `veo-3.1-fast-generate-preview` */
+  VEO_MODEL?: string;
 };
