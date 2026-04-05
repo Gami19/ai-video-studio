@@ -1,25 +1,56 @@
+import {
+  apiResultBlob,
+  apiResultJson,
+  authorizedFetch,
+  getApiBase,
+  type ApiResult,
+} from "./apiClient";
 import { debugElapsedMs, debugLog } from "./debugLog";
 import type { VideoJobStartBody, VideoOperationStatus } from "./veoTypes";
 
-const API_BASE =
-  import.meta.env.VITE_API_URL || "http://localhost:8787";
+export type { ApiResult } from "./apiClient";
 
-export interface ApiErrorBody {
-  error: string;
-  message?: string;
-  details?: unknown;
-  raiMediaFilteredReasons?: unknown;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function handleJsonResponse<T>(res: Response): Promise<T> {
-  const data = (await res.json().catch(() => ({}))) as T | ApiErrorBody;
-
-  if (!res.ok) {
-    const err = data as ApiErrorBody;
-    throw new Error(err.error || err.message || `HTTP ${res.status}`);
+function isStartJobResponse(
+  u: unknown
+): u is { operationName: string } {
+  if (!isRecord(u)) {
+    return false;
   }
+  return (
+    typeof u.operationName === "string" && u.operationName.trim().length > 0
+  );
+}
 
-  return data as T;
+function isVideoOperationStatus(u: unknown): u is VideoOperationStatus {
+  if (!isRecord(u)) {
+    return false;
+  }
+  if (typeof u.done !== "boolean") {
+    return false;
+  }
+  if (typeof u.videoReady !== "boolean") {
+    return false;
+  }
+  const op = u.operationName;
+  if (op !== null && typeof op !== "string") {
+    return false;
+  }
+  if (!("error" in u)) {
+    return false;
+  }
+  const rai = u.raiMediaFilteredCount;
+  if (rai !== null && typeof rai !== "number") {
+    return false;
+  }
+  const mime = u.videoMimeType;
+  if (mime !== null && typeof mime !== "string") {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -28,34 +59,34 @@ async function handleJsonResponse<T>(res: Response): Promise<T> {
 export async function startVideoJob(
   body: VideoJobStartBody,
   signal?: AbortSignal
-): Promise<{ operationName: string }> {
+): Promise<ApiResult<{ operationName: string }>> {
   const t0 = performance.now();
+  const apiBase = getApiBase();
   debugLog("veoApi", "POST /api/video/jobs 開始", {
     mode: body.mode,
-    apiBase: API_BASE,
+    apiBase,
   });
 
-  try {
-    const res = await fetch(`${API_BASE}/api/video/jobs`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal,
-    });
-    const data = await handleJsonResponse<{ operationName: string }>(res);
-    if (!data.operationName?.trim()) {
-      throw new Error("operationName が返されませんでした");
-    }
+  const fetchRes = await authorizedFetch(`${apiBase}/api/video/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  const jsonRes = await apiResultJson(fetchRes, isStartJobResponse);
+
+  if (jsonRes.ok) {
     debugElapsedMs("POST /api/video/jobs", t0);
     debugLog("veoApi", "POST /api/video/jobs 成功", {
-      operationName: data.operationName,
+      operationName: jsonRes.data.operationName,
     });
-    return data;
-  } catch (e) {
+  } else {
     debugElapsedMs("POST /api/video/jobs (失敗)", t0);
-    debugLog("veoApi", "POST /api/video/jobs 失敗", { message: String(e) });
-    throw e;
+    debugLog("veoApi", "POST /api/video/jobs 失敗", { error: jsonRes.error });
   }
+
+  return jsonRes;
 }
 
 /**
@@ -64,12 +95,14 @@ export async function startVideoJob(
 export async function getVideoOperation(
   operationName: string,
   signal?: AbortSignal
-): Promise<VideoOperationStatus> {
+): Promise<ApiResult<VideoOperationStatus>> {
+  const apiBase = getApiBase();
   const q = encodeURIComponent(operationName);
-  const res = await fetch(`${API_BASE}/api/video/operations?name=${q}`, {
-    signal,
-  });
-  return handleJsonResponse<VideoOperationStatus>(res);
+  const fetchRes = await authorizedFetch(
+    `${apiBase}/api/video/operations?name=${q}`,
+    { signal }
+  );
+  return apiResultJson(fetchRes, isVideoOperationStatus);
 }
 
 /**
@@ -78,26 +111,29 @@ export async function getVideoOperation(
 export async function downloadGeneratedVideo(
   operationName: string,
   signal?: AbortSignal
-): Promise<Blob> {
+): Promise<ApiResult<Blob>> {
   const t0 = performance.now();
+  const apiBase = getApiBase();
   const q = encodeURIComponent(operationName);
-  const res = await fetch(`${API_BASE}/api/video/download?name=${q}`, {
-    signal,
-  });
+  const fetchRes = await authorizedFetch(
+    `${apiBase}/api/video/download?name=${q}`,
+    { signal }
+  );
 
-  if (res.ok) {
-    const blob = await res.blob();
+  const blobRes = await apiResultBlob(fetchRes);
+
+  if (blobRes.ok) {
     debugElapsedMs("GET /api/video/download", t0);
     debugLog("veoApi", "GET /api/video/download 成功", {
-      size: blob.size,
-      type: blob.type,
+      size: blobRes.data.size,
+      type: blobRes.data.type,
     });
-    return blob;
+  } else {
+    debugElapsedMs("GET /api/video/download (失敗)", t0);
+    debugLog("veoApi", "GET /api/video/download 失敗", {
+      error: blobRes.error,
+    });
   }
 
-  const data = (await res.json().catch(() => ({}))) as ApiErrorBody;
-  const msg = data.error || data.message || `HTTP ${res.status}`;
-  debugElapsedMs("GET /api/video/download (失敗)", t0);
-  debugLog("veoApi", "GET /api/video/download 失敗", { message: msg });
-  throw new Error(msg);
+  return blobRes;
 }

@@ -1,8 +1,15 @@
-# ローカル開発用の環境変数
-# このファイルを .dev.vars にコピーし、値を設定してください
-# .dev.vars は .gitignore に含まれており、リポジトリにコミットされません
+# コピーして .dev.vars にリネームし、値を埋める（.dev.vars は Git 対象外）
+#
+# GEMINI_API_KEY は wrangler secret put でも可
 
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=
 
-# 任意。未設定時は wrangler.jsonc の VEO_MODEL（既定: veo-3.1-fast-generate-preview）
-# VEO_MODEL=veo-3.1-fast-generate-preview
+# Cloudflare Zero Trust のチームドメイン（JWT の iss と一致させる）
+# 例: https://your-team.cloudflareaccess.com
+ACCESS_JWT_ISSUER=
+
+# Access アプリケーションの aud（Cf-Access-Jwt-Assertion をデコードして確認）。カンマ区切りで複数可
+ACCESS_JWT_AUD=
+
+# CORS（フロントのオリジン）。本番 Pages 例: https://ai-video-studio-frontend.pages.dev
+ALLOWED_ORIGINS=http://localhost:5173

@@ -6,7 +6,7 @@ import {
   type GenerateVideosParameters,
 } from "@google/genai";
 import { flattenError } from "zod";
-import type { Env } from "../types";
+import type { AppEnv } from "../types";
 import {
   stripBase64Prefix,
   videoJobStartSchema,
@@ -137,7 +137,7 @@ async function videoToArrayBuffer(
   throw new Error("No video bytes or URI in generation result");
 }
 
-const videoRoute = new Hono<{ Bindings: Env }>()
+const videoRoute = new Hono<AppEnv>()
   .post(
     "/jobs",
     zValidator("json", videoJobStartSchema, (result, c) => {
