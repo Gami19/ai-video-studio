@@ -1,0 +1,15 @@
+# コピーして .dev.vars にリネームし、値を埋める（.dev.vars は Git 対象外）
+#
+# GEMINI_API_KEY は wrangler secret put でも可
+
+GEMINI_API_KEY=
+
+# Cloudflare Zero Trust のチームドメイン（JWT の iss と一致させる）
+# 例: https://your-team.cloudflareaccess.com
+ACCESS_JWT_ISSUER=
+
+# Access アプリケーションの aud（Cf-Access-Jwt-Assertion をデコードして確認）。カンマ区切りで複数可
+ACCESS_JWT_AUD=
+
+# CORS（フロントのオリジン）。
+ALLOWED_ORIGINS=http://localhost:5173

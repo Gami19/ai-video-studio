@@ -1,5 +1,13 @@
 {
   "name": "ai-video-studio-backend",
   "main": "src/index.ts",
-  "compatibility_date": "2025-01-01"
+  "compatibility_date": "2025-01-01",
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:5173",
+    "VEO_MODEL": "veo-3.1-fast-generate-preview"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
 }
