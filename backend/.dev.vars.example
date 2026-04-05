@@ -11,5 +11,5 @@ ACCESS_JWT_ISSUER=
 # Access アプリケーションの aud（Cf-Access-Jwt-Assertion をデコードして確認）。カンマ区切りで複数可
 ACCESS_JWT_AUD=
 
-# CORS（フロントのオリジン）。本番 Pages 例: https://ai-video-studio-frontend.pages.dev
+# CORS（フロントのオリジン）。
 ALLOWED_ORIGINS=http://localhost:5173
