@@ -1,3 +1,4 @@
+import { userFacingApiError } from "./apiClient";
 import { getVideoOperation } from "./veoApi";
 import type { VideoOperationStatus } from "./veoTypes";
 
@@ -67,7 +68,11 @@ export async function pollVeoUntilVideoReady(
       );
     }
 
-    const status = await getVideoOperation(operationName, signal);
+    const opRes = await getVideoOperation(operationName, signal);
+    if (!opRes.ok) {
+      throw new Error(userFacingApiError(opRes.error));
+    }
+    const status = opRes.data;
     options?.onStatus?.(status);
 
     if (status.done) {

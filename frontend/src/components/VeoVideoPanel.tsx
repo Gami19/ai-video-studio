@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { userFacingApiError } from "../lib/apiClient";
 import { downloadGeneratedVideo, startVideoJob } from "../lib/veoApi";
 import { readImageFileForVeoJob } from "../lib/veoImageFile";
 import { pollVeoUntilVideoReady } from "../lib/veoPoll";
@@ -88,7 +89,7 @@ export function VeoVideoPanel() {
       const { imageBase64, imageMimeType } = await readImageFileForVeoJob(file);
       const config = buildConfig();
 
-      const { operationName } = await startVideoJob(
+      const startRes = await startVideoJob(
         {
           mode: "image_prompt",
           prompt: prompt.trim(),
@@ -98,6 +99,10 @@ export function VeoVideoPanel() {
         },
         signal
       );
+      if (!startRes.ok) {
+        throw new Error(userFacingApiError(startRes.error));
+      }
+      const { operationName } = startRes.data;
 
       setLastOperationName(operationName);
       setPhase("polling");
@@ -116,7 +121,11 @@ export function VeoVideoPanel() {
       setPhase("downloading");
       setStatusLine("動画をダウンロードしています…");
 
-      const blob = await downloadGeneratedVideo(operationName, signal);
+      const dlRes = await downloadGeneratedVideo(operationName, signal);
+      if (!dlRes.ok) {
+        throw new Error(userFacingApiError(dlRes.error));
+      }
+      const blob = dlRes.data;
       revokePreview();
       const url = URL.createObjectURL(blob);
       previewUrlRef.current = url;

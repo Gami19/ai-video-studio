@@ -1,7 +1,12 @@
+import {
+  apiResultJson,
+  authorizedFetch,
+  getApiBase,
+  type ApiResult,
+} from "./apiClient";
 import { debugElapsedMs, debugLog } from "./debugLog";
 
-const API_BASE =
-  import.meta.env.VITE_API_URL || "http://localhost:8787";
+export type { ApiResult } from "./apiClient";
 
 export interface AnalyzeResponse {
   analysis: string;
@@ -12,20 +17,22 @@ export interface GenerateResponse {
   imageBase64: string;
 }
 
-export interface ApiError {
-  error: string;
-  message?: string;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function handleResponse<T>(res: Response): Promise<T> {
-  const data = (await res.json().catch(() => ({}))) as T | ApiError;
-
-  if (!res.ok) {
-    const err = data as ApiError;
-    throw new Error(err.error || err.message || `HTTP ${res.status}`);
+function isAnalyzeResponse(u: unknown): u is AnalyzeResponse {
+  if (!isRecord(u)) {
+    return false;
   }
+  return typeof u.analysis === "string" && typeof u.prompt === "string";
+}
 
-  return data as T;
+function isGenerateResponse(u: unknown): u is GenerateResponse {
+  if (!isRecord(u)) {
+    return false;
+  }
+  return typeof u.imageBase64 === "string";
 }
 
 /**
@@ -34,33 +41,35 @@ async function handleResponse<T>(res: Response): Promise<T> {
 export async function analyzeFrames(
   frames: string[],
   userHint?: string
-): Promise<AnalyzeResponse> {
+): Promise<ApiResult<AnalyzeResponse>> {
   const t0 = performance.now();
+  const apiBase = getApiBase();
   debugLog("api", "POST /api/analyze: リクエスト開始", {
     frameCount: frames.length,
     hasUserHint: Boolean(userHint?.trim()),
-    apiBase: API_BASE,
+    apiBase,
   });
 
-  try {
-    const res = await fetch(`${API_BASE}/api/analyze`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ frames, userHint }),
-    });
+  const fetchRes = await authorizedFetch(`${apiBase}/api/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ frames, userHint }),
+  });
 
-    const data = await handleResponse<AnalyzeResponse>(res);
+  const jsonRes = await apiResultJson(fetchRes, isAnalyzeResponse);
+
+  if (jsonRes.ok) {
     debugElapsedMs("POST /api/analyze", t0);
     debugLog("api", "POST /api/analyze: 成功", {
-      analysisPreview: data.analysis.slice(0, 120),
-      promptPreview: data.prompt.slice(0, 120),
+      analysisPreview: jsonRes.data.analysis.slice(0, 120),
+      promptPreview: jsonRes.data.prompt.slice(0, 120),
     });
-    return data;
-  } catch (e) {
+  } else {
     debugElapsedMs("POST /api/analyze (失敗)", t0);
-    debugLog("api", "POST /api/analyze: 失敗", { message: String(e) });
-    throw e;
+    debugLog("api", "POST /api/analyze: 失敗", { error: jsonRes.error });
   }
+
+  return jsonRes;
 }
 
 /**
@@ -68,29 +77,31 @@ export async function analyzeFrames(
  */
 export async function generateThumbnail(
   prompt: string
-): Promise<GenerateResponse> {
+): Promise<ApiResult<GenerateResponse>> {
   const t0 = performance.now();
+  const apiBase = getApiBase();
   debugLog("api", "POST /api/generate: リクエスト開始", {
     promptLength: prompt.length,
-    apiBase: API_BASE,
+    apiBase,
   });
 
-  try {
-    const res = await fetch(`${API_BASE}/api/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
+  const fetchRes = await authorizedFetch(`${apiBase}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
 
-    const data = await handleResponse<GenerateResponse>(res);
+  const jsonRes = await apiResultJson(fetchRes, isGenerateResponse);
+
+  if (jsonRes.ok) {
     debugElapsedMs("POST /api/generate", t0);
     debugLog("api", "POST /api/generate: 成功", {
-      imageBase64Length: data.imageBase64.length,
+      imageBase64Length: jsonRes.data.imageBase64.length,
     });
-    return data;
-  } catch (e) {
+  } else {
     debugElapsedMs("POST /api/generate (失敗)", t0);
-    debugLog("api", "POST /api/generate: 失敗", { message: String(e) });
-    throw e;
+    debugLog("api", "POST /api/generate: 失敗", { error: jsonRes.error });
   }
+
+  return jsonRes;
 }

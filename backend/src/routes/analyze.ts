@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { GoogleGenAI, Type } from "@google/genai";
 import { zValidator } from "@hono/zod-validator";
 import { flattenError } from "zod";
-import type { Env } from "../types";
+import type { AppEnv } from "../types";
 import {
   analyzeSchema,
   normalizeFrames,
@@ -89,7 +89,7 @@ const analyzeResponseSchema = {
   required: ["analysis", "prompt"],
 } as const;
 
-const analyzeRoute = new Hono<{ Bindings: Env }>()
+const analyzeRoute = new Hono<AppEnv>()
   .post(
     "/",
     zValidator("json", analyzeSchema, (result, c) => {

@@ -2,10 +2,10 @@ import { Hono } from "hono";
 import { GoogleGenAI } from "@google/genai";
 import { zValidator } from "@hono/zod-validator";
 import { flattenError } from "zod";
-import type { Env } from "../types";
+import type { AppEnv } from "../types";
 import { generateSchema, type GenerateInput } from "../schemas";
 
-const generateRoute = new Hono<{ Bindings: Env }>()
+const generateRoute = new Hono<AppEnv>()
   .post(
     "/",
     zValidator("json", generateSchema, (result, c) => {

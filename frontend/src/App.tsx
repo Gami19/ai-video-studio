@@ -5,6 +5,7 @@ import { ClipJoinPanel } from "./components/ClipJoinPanel";
 import { ImageSlideshowPanel } from "./components/ImageSlideshowPanel";
 import { VeoVideoPanel } from "./components/VeoVideoPanel";
 import { analyzeFrames, generateThumbnail } from "./lib/api";
+import { userFacingApiError } from "./lib/apiClient";
 import { debugLog } from "./lib/debugLog";
 import "./App.css";
 
@@ -36,11 +37,25 @@ function App() {
         hasUserHint: Boolean(userHint?.trim()),
       });
 
-      const { prompt } = await analyzeFrames(frames, userHint);
+      const analyzeRes = await analyzeFrames(frames, userHint);
+      if (!analyzeRes.ok) {
+        setStep("error");
+        setError(userFacingApiError(analyzeRes.error));
+        debugLog("App", "フロー: error", { error: analyzeRes.error });
+        return;
+      }
+      const { prompt } = analyzeRes.data;
       setStep("generating");
       debugLog("App", "フロー: generating 開始");
 
-      const { imageBase64: img } = await generateThumbnail(prompt);
+      const genRes = await generateThumbnail(prompt);
+      if (!genRes.ok) {
+        setStep("error");
+        setError(userFacingApiError(genRes.error));
+        debugLog("App", "フロー: error", { error: genRes.error });
+        return;
+      }
+      const { imageBase64: img } = genRes.data;
       setImageBase64(img);
       setStep("done");
       debugLog("App", "フロー: done");
