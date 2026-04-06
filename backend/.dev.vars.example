@@ -13,3 +13,14 @@ ACCESS_JWT_AUD=
 
 # CORS（フロントのオリジン）。
 ALLOWED_ORIGINS=http://localhost:5173
+
+# --- サムネイル（フェーズ A）---
+# wrangler.jsonc の kv_namespaces で THUMBNAIL_JOBS をバインドすること。
+# 本番用 KV ID は `npx wrangler kv namespace create THUMBNAIL_JOBS` で作成し wrangler.jsonc の id / preview_id を差し替える。
+#
+# THUMBNAIL_JOB_TTL_SECONDS=3600
+# THUMBNAIL_RL_ANALYZE_MAX=30
+# THUMBNAIL_RL_GENERATE_MAX=20
+# THUMBNAIL_RL_WINDOW_SEC=60
+# サーバで Imagen プロンプトの先頭をログに出す（本番では false 推奨）
+# LOG_PROMPT_PREVIEW=false

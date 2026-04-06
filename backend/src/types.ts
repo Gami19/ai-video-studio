@@ -1,3 +1,4 @@
+/// <reference types="@cloudflare/workers-types" />
 import type { JWTPayload } from "jose";
 
 /**
@@ -18,6 +19,23 @@ export type Env = {
   ACCESS_JWT_ISSUER?: string;
   /** 許可する aud（カンマ区切り可）。実トークンをデコードして確定させる */
   ACCESS_JWT_AUD?: string;
+  /** サムネ analyze 結果の一時保存（Workers KV） */
+  THUMBNAIL_JOBS: KVNamespace;
+  /** KV の TTL（秒）。未設定時 3600 */
+  THUMBNAIL_JOB_TTL_SECONDS?: string;
+  /** レート制限: analyze あたりのウィンドウ内最大回数（既定 30） */
+  THUMBNAIL_RL_ANALYZE_MAX?: string;
+  /** レート制限: generate あたりのウィンドウ内最大回数（既定 20） */
+  THUMBNAIL_RL_GENERATE_MAX?: string;
+  /** レート制限ウィンドウ（秒）。既定 60 */
+  THUMBNAIL_RL_WINDOW_SEC?: string;
+  /**
+   * `true` のときのみ、サーバが Imagen プロンプトのプレビューをログに出す。
+   * 本番では未設定または false を推奨。
+   */
+  LOG_PROMPT_PREVIEW?: string;
+  /** `development` のとき onError で詳細メッセージを返す（index.ts） */
+  ENVIRONMENT?: string;
 };
 
 /** Hono コンテキスト変数（認証ミドルウェアが設定） */
