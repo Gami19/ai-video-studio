@@ -3,7 +3,7 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-01-01",
   "vars": {
-    "ALLOWED_ORIGINS": "http://localhost:5173",
+    "ALLOWED_ORIGINS": "https://ai-video-studio-frontend.pages.dev",
     "VEO_MODEL": "veo-3.1-fast-generate-preview",
     // サムネジョブ KV の TTL（秒）
     "THUMBNAIL_JOB_TTL_SECONDS": "3600",
