@@ -21,7 +21,11 @@ const app = new Hono<AppEnv>()
         return null;
       },
       allowMethods: ["GET", "POST", "OPTIONS"],
-      allowHeaders: ["Content-Type", "Authorization"],
+      allowHeaders: [
+        "Content-Type",
+        "Authorization",
+        "Cf-Access-Jwt-Assertion",
+      ],
     })(c, next);
   })
   .use("/api/*", requireAccessJwt)

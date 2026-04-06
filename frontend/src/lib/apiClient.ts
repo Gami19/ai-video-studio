@@ -1,8 +1,12 @@
 import type { AccessJwtToken } from "./accessJwt";
 import { clearAccessJwt, getAccessJwt } from "./accessJwt";
 
+/** Cloudflare Access のアプリ JWT（Cf-Access-Jwt-Assertion）。Validate JWTs ドキュメント参照。 */
+export const CF_ACCESS_JWT_ASSERTION_HEADER = "Cf-Access-Jwt-Assertion";
+
 export function getApiBase(): string {
-  return import.meta.env.VITE_API_URL || "http://localhost:8787";
+  const raw = import.meta.env.VITE_API_URL || "http://localhost:8787";
+  return raw.replace(/\/+$/, "");
 }
 
 export type ApiClientError =
@@ -40,6 +44,8 @@ function mergeAuthHeaders(
 ): Headers {
   const h = new Headers(init.headers ?? undefined);
   h.set("Authorization", `Bearer ${token}`);
+  // pages.dev → workers.dev では Cookie が送られないため、Access エッジ通過用に同一 JWT を付与
+  h.set(CF_ACCESS_JWT_ASSERTION_HEADER, token);
   return h;
 }
 
