@@ -423,6 +423,62 @@
   background: var(--code-bg);
 }
 
+.video-uploader__details {
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.video-uploader__details-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.video-uploader__blocks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.video-uploader__block-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-m);
+  margin-top: var(--space-2);
+}
+
+.video-uploader__block-input,
+.video-uploader__block-select {
+  font-family: inherit;
+  font-size: 0.875rem;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-h);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.video-uploader__block-input:focus,
+.video-uploader__block-select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.video-uploader__block-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  margin-top: var(--space-2);
+  cursor: pointer;
+}
+
 /* ThumbnailResult */
 
 .thumbnail-result {

@@ -1,6 +1,11 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { extractFrames } from "../lib/frameExtractor";
 import { debugLog } from "../lib/debugLog";
+import type {
+  ThumbnailBlocksPayload,
+  ThumbnailHero,
+  ThumbnailTone,
+} from "../types/thumbnailBlocks";
 
 export type UploadStatus =
   | "idle"
@@ -9,23 +14,102 @@ export type UploadStatus =
   | "extracted"
   | "error";
 
+export type ThumbnailAnalyzePayload = {
+  frames: string[];
+  userHint?: string;
+  thumbnailBlocks?: ThumbnailBlocksPayload;
+};
+
 interface VideoUploaderProps {
-  onFramesExtracted: (frames: string[], userHint?: string) => void;
+  onAnalyze: (payload: ThumbnailAnalyzePayload) => void;
   onReset?: () => void;
   disabled?: boolean;
 }
 
+const HERO_OPTIONS: { value: ThumbnailHero; label: string }[] = [
+  { value: "face", label: "顔・人物" },
+  { value: "screen", label: "画面・UI" },
+  { value: "product", label: "モノ・商品" },
+  { value: "comparison", label: "比較（並べ）" },
+  { value: "scene", label: "風景・場面" },
+  { value: "other", label: "その他" },
+];
+
+const TONE_OPTIONS: { value: ThumbnailTone; label: string }[] = [
+  { value: "bright", label: "明るい" },
+  { value: "calm", label: "落ち着いた" },
+  { value: "high_contrast", label: "はっきり・コントラスト強め" },
+  { value: "dark", label: "ダーク・シネマ" },
+  { value: "warm", label: "暖かいトーン" },
+  { value: "cool", label: "クール・清涼" },
+  { value: "minimal", label: "ミニマル" },
+];
+
+function buildThumbnailBlocks(input: {
+  mainMessage: string;
+  hero: string;
+  heroNote: string;
+  tone: string;
+  toneNote: string;
+  overlayTextJa: string;
+  noOverlayText: boolean;
+  videoTitle: string;
+  avoid: string;
+}): ThumbnailBlocksPayload | undefined {
+  const o: ThumbnailBlocksPayload = {};
+
+  const mm = input.mainMessage.trim();
+  if (mm) o.mainMessage = mm;
+
+  if (input.hero && HERO_OPTIONS.some((h) => h.value === input.hero)) {
+    o.hero = input.hero as ThumbnailHero;
+  }
+
+  const hn = input.heroNote.trim();
+  if (hn) o.heroNote = hn;
+
+  if (input.tone && TONE_OPTIONS.some((t) => t.value === input.tone)) {
+    o.tone = input.tone as ThumbnailTone;
+  }
+
+  const tn = input.toneNote.trim();
+  if (tn) o.toneNote = tn;
+
+  if (input.noOverlayText) {
+    o.overlayTextJa = null;
+  } else {
+    const ot = input.overlayTextJa.trim();
+    if (ot) o.overlayTextJa = ot;
+  }
+
+  const vt = input.videoTitle.trim();
+  if (vt) o.videoTitle = vt;
+
+  const av = input.avoid.trim();
+  if (av) o.avoid = av;
+
+  return Object.keys(o).length > 0 ? o : undefined;
+}
+
 export function VideoUploader({
-  onFramesExtracted,
+  onAnalyze,
   onReset,
   disabled = false,
 }: VideoUploaderProps) {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
   const [frames, setFrames] = useState<string[]>([]);
   const [userHint, setUserHint] = useState("");
+  const [mainMessage, setMainMessage] = useState("");
+  const [hero, setHero] = useState("");
+  const [heroNote, setHeroNote] = useState("");
+  const [tone, setTone] = useState("");
+  const [toneNote, setToneNote] = useState("");
+  const [overlayTextJa, setOverlayTextJa] = useState("");
+  const [noOverlayText, setNoOverlayText] = useState(false);
+  const [videoTitle, setVideoTitle] = useState("");
+  const [avoid, setAvoid] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [extractProgress, setExtractProgress] = useState<number>(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -76,15 +160,39 @@ export function VideoUploader({
     e.target.value = "";
   };
 
-  const handleAnalyze = () => {
+  const handleAnalyzeClick = () => {
     if (frames.length > 0) {
-      onFramesExtracted(frames, userHint.trim() || undefined);
+      const thumbnailBlocks = buildThumbnailBlocks({
+        mainMessage,
+        hero,
+        heroNote,
+        tone,
+        toneNote,
+        overlayTextJa,
+        noOverlayText,
+        videoTitle,
+        avoid,
+      });
+      onAnalyze({
+        frames,
+        userHint: userHint.trim() || undefined,
+        thumbnailBlocks,
+      });
     }
   };
 
   const handleReset = () => {
     setFrames([]);
     setUserHint("");
+    setMainMessage("");
+    setHero("");
+    setHeroNote("");
+    setTone("");
+    setToneNote("");
+    setOverlayTextJa("");
+    setNoOverlayText(false);
+    setVideoTitle("");
+    setAvoid("");
     setError(null);
     setExtractProgress(0);
     setUploadStatus("idle");
@@ -102,7 +210,6 @@ export function VideoUploader({
           className={`video-uploader__dropzone ${disabled ? "video-uploader__dropzone--disabled" : ""}`}
         >
           <input
-            ref={fileInputRef}
             type="file"
             accept="video/*"
             onChange={handleFileChange}
@@ -151,22 +258,145 @@ export function VideoUploader({
           </div>
           <div className="video-uploader__hint">
             <label htmlFor="user-hint" className="video-uploader__hint-label">
-              ヒント（任意）: サムネイルに含めたい要素を入力
+              ヒント（任意）: 補足したいこと
             </label>
             <textarea
               id="user-hint"
               value={userHint}
               onChange={(e) => setUserHint(e.target.value)}
-              placeholder="例: 赤い背景、大胆な文字"
+              placeholder="ブロックで指定しきれないことを自由に入力（ブロック優先で解釈されます）"
               rows={2}
               className="video-uploader__hint-input"
               maxLength={500}
             />
           </div>
+
+          <details className="video-uploader__details">
+            <summary className="video-uploader__details-summary">
+              詳細を指定（任意）
+            </summary>
+            <div className="video-uploader__blocks">
+              <label className="video-uploader__block-label" htmlFor="tb-main">
+                一番伝えたいこと
+              </label>
+              <input
+                id="tb-main"
+                type="text"
+                value={mainMessage}
+                onChange={(e) => setMainMessage(e.target.value)}
+                maxLength={120}
+                className="video-uploader__block-input"
+              />
+
+              <label className="video-uploader__block-label" htmlFor="tb-hero">
+                サムネの主役
+              </label>
+              <select
+                id="tb-hero"
+                value={hero}
+                onChange={(e) => setHero(e.target.value)}
+                className="video-uploader__block-select"
+              >
+                <option value="">（指定なし）</option>
+                {HERO_OPTIONS.map((h) => (
+                  <option key={h.value} value={h.value}>
+                    {h.label}
+                  </option>
+                ))}
+              </select>
+
+              <label className="video-uploader__block-label" htmlFor="tb-hero-note">
+                主役の補足
+              </label>
+              <input
+                id="tb-hero-note"
+                type="text"
+                value={heroNote}
+                onChange={(e) => setHeroNote(e.target.value)}
+                maxLength={120}
+                className="video-uploader__block-input"
+              />
+
+              <label className="video-uploader__block-label" htmlFor="tb-tone">
+                雰囲気・トーン
+              </label>
+              <select
+                id="tb-tone"
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                className="video-uploader__block-select"
+              >
+                <option value="">（指定なし）</option>
+                {TONE_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+
+              <label className="video-uploader__block-label" htmlFor="tb-tone-note">
+                トーンの補足
+              </label>
+              <input
+                id="tb-tone-note"
+                type="text"
+                value={toneNote}
+                onChange={(e) => setToneNote(e.target.value)}
+                maxLength={120}
+                className="video-uploader__block-input"
+              />
+
+              <label className="video-uploader__block-check">
+                <input
+                  type="checkbox"
+                  checked={noOverlayText}
+                  onChange={(e) => setNoOverlayText(e.target.checked)}
+                />
+                画像内に文字を入れない
+              </label>
+              <label className="video-uploader__block-label" htmlFor="tb-overlay">
+                載せたい短い文字（日本語）
+              </label>
+              <input
+                id="tb-overlay"
+                type="text"
+                value={overlayTextJa}
+                onChange={(e) => setOverlayTextJa(e.target.value)}
+                maxLength={40}
+                disabled={noOverlayText}
+                className="video-uploader__block-input"
+              />
+
+              <label className="video-uploader__block-label" htmlFor="tb-title">
+                動画タイトル（任意・参考）
+              </label>
+              <input
+                id="tb-title"
+                type="text"
+                value={videoTitle}
+                onChange={(e) => setVideoTitle(e.target.value)}
+                maxLength={200}
+                className="video-uploader__block-input"
+              />
+
+              <label className="video-uploader__block-label" htmlFor="tb-avoid">
+                入れたくないもの・注意
+              </label>
+              <textarea
+                id="tb-avoid"
+                value={avoid}
+                onChange={(e) => setAvoid(e.target.value)}
+                maxLength={300}
+                rows={2}
+                className="video-uploader__hint-input"
+              />
+            </div>
+          </details>
+
           <div className="video-uploader__actions">
             <button
               type="button"
-              onClick={handleAnalyze}
+              onClick={handleAnalyzeClick}
               disabled={disabled}
               className="video-uploader__analyze"
             >

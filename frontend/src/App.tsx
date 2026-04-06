@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { VideoUploader } from "./components/VideoUploader";
+import {
+  VideoUploader,
+  type ThumbnailAnalyzePayload,
+} from "./components/VideoUploader";
 import { ThumbnailResult } from "./components/ThumbnailResult";
 import { ClipJoinPanel } from "./components/ClipJoinPanel";
 import { ImageSlideshowPanel } from "./components/ImageSlideshowPanel";
@@ -18,16 +21,16 @@ type FlowStep =
 
 type MainTab = "thumbnail" | "veo" | "clip_join" | "image_show";
 
+const THUMBNAIL_JOB_SESSION_KEY = "ai-video-studio:thumbnail-job-id";
+
 function App() {
   const [mainTab, setMainTab] = useState<MainTab>("thumbnail");
   const [step, setStep] = useState<FlowStep>("upload");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleFramesExtracted = async (
-    frames: string[],
-    userHint?: string
-  ) => {
+  const handleThumbnailAnalyze = async (payload: ThumbnailAnalyzePayload) => {
+    const { frames, userHint, thumbnailBlocks } = payload;
     setError(null);
 
     try {
@@ -35,20 +38,29 @@ function App() {
       debugLog("App", "フロー: analyzing 開始", {
         frameCount: frames.length,
         hasUserHint: Boolean(userHint?.trim()),
+        hasThumbnailBlocks: Boolean(thumbnailBlocks),
       });
 
-      const analyzeRes = await analyzeFrames(frames, userHint);
+      const analyzeRes = await analyzeFrames(frames, {
+        userHint,
+        thumbnailBlocks,
+      });
       if (!analyzeRes.ok) {
         setStep("error");
         setError(userFacingApiError(analyzeRes.error));
         debugLog("App", "フロー: error", { error: analyzeRes.error });
         return;
       }
-      const { prompt } = analyzeRes.data;
+      const { jobId } = analyzeRes.data;
+      try {
+        sessionStorage.setItem(THUMBNAIL_JOB_SESSION_KEY, jobId);
+      } catch {
+        // sessionStorage 不可時は無視（同一タブ復元のみ影響）
+      }
       setStep("generating");
-      debugLog("App", "フロー: generating 開始");
+      debugLog("App", "フロー: generating 開始", { jobId });
 
-      const genRes = await generateThumbnail(prompt);
+      const genRes = await generateThumbnail(jobId);
       if (!genRes.ok) {
         setStep("error");
         setError(userFacingApiError(genRes.error));
@@ -71,12 +83,22 @@ function App() {
     setStep("upload");
     setImageBase64(null);
     setError(null);
+    try {
+      sessionStorage.removeItem(THUMBNAIL_JOB_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
   };
 
   const handleReset = () => {
     setStep("upload");
     setImageBase64(null);
     setError(null);
+    try {
+      sessionStorage.removeItem(THUMBNAIL_JOB_SESSION_KEY);
+    } catch {
+      /* ignore */
+    }
   };
 
   const isLoading = step === "analyzing" || step === "generating";
@@ -166,7 +188,7 @@ function App() {
 
             {step === "upload" && (
               <VideoUploader
-                onFramesExtracted={handleFramesExtracted}
+                onAnalyze={handleThumbnailAnalyze}
                 onReset={handleReset}
                 disabled={false}
               />

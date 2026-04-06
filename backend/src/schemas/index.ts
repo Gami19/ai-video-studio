@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { thumbnailBlocksSchema } from "./thumbnailBlocks";
+
+export { thumbnailBlocksSchema } from "./thumbnailBlocks";
+export type { ThumbnailBlocksInput } from "./thumbnailBlocks";
 
 /**
  * base64 プレフィックス（data:image/jpeg;base64,）を除去して純粋な base64 文字列を返す
@@ -34,6 +38,7 @@ export const analyzeSchema = z
       .string()
       .max(500, "userHint は最大 500 文字です")
       .optional(),
+    thumbnailBlocks: thumbnailBlocksSchema.optional(),
   })
   .refine(
     (data) => {
@@ -68,13 +73,10 @@ export function normalizeFrames(frames: string[]): string[] {
 }
 
 /**
- * POST /api/generate 用スキーマ
+ * POST /api/generate 用スキーマ（フェーズ A: jobId のみ）
  */
 export const generateSchema = z.object({
-  prompt: z
-    .string()
-    .min(1, "prompt は必須です")
-    .max(2000, "prompt は最大 2000 文字です"),
+  jobId: z.uuid("jobId は有効な UUID である必要があります"),
 });
 
 export type GenerateInput = z.infer<typeof generateSchema>;

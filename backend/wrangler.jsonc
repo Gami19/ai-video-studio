@@ -4,8 +4,21 @@
   "compatibility_date": "2025-01-01",
   "vars": {
     "ALLOWED_ORIGINS": "http://localhost:5173",
-    "VEO_MODEL": "veo-3.1-fast-generate-preview"
+    "VEO_MODEL": "veo-3.1-fast-generate-preview",
+    // サムネジョブ KV の TTL（秒）
+    "THUMBNAIL_JOB_TTL_SECONDS": "3600",
+    "THUMBNAIL_RL_ANALYZE_MAX": "30",
+    "THUMBNAIL_RL_GENERATE_MAX": "20",
+    "THUMBNAIL_RL_WINDOW_SEC": "60"
   },
+  // KV: 本番・プレビュー用 ID は `npx wrangler kv namespace create THUMBNAIL_JOBS` で作成し、下記を差し替える
+  "kv_namespaces": [
+    {
+      "binding": "THUMBNAIL_JOBS",
+      "id": "e8166c6155bb4b3183ae4058d1c9f635",
+      "preview_id": "fbf6297e89e64d178d114b07f52ec42c"
+    }
+  ],
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
