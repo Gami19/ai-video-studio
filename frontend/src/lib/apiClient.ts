@@ -4,9 +4,21 @@ import { clearAccessJwt, getAccessJwt } from "./accessJwt";
 /** Cloudflare Access のアプリ JWT（Cf-Access-Jwt-Assertion）。Validate JWTs ドキュメント参照。 */
 export const CF_ACCESS_JWT_ASSERTION_HEADER = "Cf-Access-Jwt-Assertion";
 
+/**
+ * API のベース URL。
+ * - 未設定・空・空白のみ: `''`（同一オリジンの `/api/...` → Pages Functions BFF）
+ * - それ以外: 末尾スラッシュを除いた絶対 URL（ローカルで Worker に直叩きする場合など）
+ */
 export function getApiBase(): string {
-  const raw = import.meta.env.VITE_API_URL || "http://localhost:8787";
-  return raw.replace(/\/+$/, "");
+  const raw = import.meta.env.VITE_API_URL;
+  if (typeof raw !== "string") {
+    return "";
+  }
+  const t = raw.trim();
+  if (t === "") {
+    return "";
+  }
+  return t.replace(/\/+$/, "");
 }
 
 export type ApiClientError =
@@ -44,7 +56,7 @@ function mergeAuthHeaders(
 ): Headers {
   const h = new Headers(init.headers ?? undefined);
   h.set("Authorization", `Bearer ${token}`);
-  // pages.dev → workers.dev では Cookie が送られないため、Access エッジ通過用に同一 JWT を付与
+  // 同一オリジン BFF でも Worker 検証用に Access JWT をヘッダで付与
   h.set(CF_ACCESS_JWT_ASSERTION_HEADER, token);
   return h;
 }
