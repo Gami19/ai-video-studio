@@ -1,0 +1,6 @@
+# BFF 経由で試す手順の例:
+# 1. backend を `wrangler dev`（既定 8787）で起動
+# 2. このファイルで BACKEND_API_ORIGIN を下記のようにする
+# 3. frontend の .env で VITE_API_URL を空（または行ごと削除）にする
+# 4. `npm run build && npm run pages:dev` で静的＋Functions を起動し、同一オリジン `/api/...` を確認
+BACKEND_API_ORIGIN=http://127.0.0.1:8787
